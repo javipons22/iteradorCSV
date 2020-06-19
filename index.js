@@ -1,39 +1,54 @@
-let fs = require('fs');
+// Modulos
+const fs = require('fs');
+const util = require('util');
 
-// Seteamos un array de atributos invalidos para chequear en el loop
-let invalidos = ['Animal'];
-
-// El objeto error Log será lo que contenera los errores y despues sera guardado como JSON
+// Variables funcionales
+let archivoInput = 'data.json';
+let archivoSalida = 'errores.json';
+let atributosInvalidos = ['Animal'];
 let errorLog = {};
 
-fs.readFile('data.json', (err, data) => {
+// Funciones
+const leerJSON = util.promisify(fs.readFile);
 
-    // Chequeamos error y terminamos la funcion si hay uno
-    if (err) throw err;
+const crearArchivoErrores = util.promisify(fs.writeFile);
 
-    // Obtenemos los datos del archivo en forma de buffer y lo convertimos en string
-    // A ese string lo convertimos en objeto javascript con JSON.parse
-    let variantesObject = JSON.parse(data.toString());
+const objetoDesdeJSON = buffer => {
+    objetoJSON = buffer.toString();
+    return JSON.parse(objetoJSON);
+};
 
-    // Definimos el numero de la primera linea para mostrar en el loop
-    let i = 2;
+const agregarErrorAlLog = (atributo, linea) => {
+    errorLog[`Linea ${linea}`] = `Error: El atributo ${atributo} no es válido`;
+};
 
-    for (variante of variantesObject) {
-        if (invalidos.includes(variante.ATRIBUTO)) {
-            errorLog[`Linea ${i}`] = `Error: El atributo ${variante.ATRIBUTO} no es válido`;
+const validarAtributos = objeto => {
+    let lineaActual = 2;
+    for (variante of objeto) {
+        if (atributosInvalidos.includes(variante.ATRIBUTO)) {
+            agregarErrorAlLog(variante.ATRIBUTO, lineaActual);
         }
-        i++;
+        lineaActual++;
     }
+}
 
-    let archivoErrores = JSON.stringify(errorLog);
+const JSONDesdeObjeto = objeto => {
+    let erroresJSON = JSON.stringify(objeto);
+    return erroresJSON;
+}
 
-    fs.writeFile('errores.json', archivoErrores, (err) => {
-        if (err) throw err;
-        console.log('El archivo de errores fue guardado');
-    });
-
-});
-
-
-
-
+// Ejecuccion
+leerJSON(archivoInput)
+    .then( buffer => {
+        return objetoDesdeJSON(buffer);
+    })
+    .then( objeto => {
+        validarAtributos(objeto);
+    })
+    .then( () => {
+        return JSONDesdeObjeto(errorLog);
+    })
+    .then( errorLogJSON => {
+        crearArchivoErrores(archivoSalida, errorLogJSON);
+    })
+    .catch(error => console.log(error.message)); 
